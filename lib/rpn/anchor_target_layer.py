@@ -134,10 +134,11 @@ class AnchorTargetLayer(caffe.Layer):
             np.ascontiguousarray(gt_boxes, dtype=np.float))
         argmax_overlaps = overlaps.argmax(axis=1)
         max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]
-        gt_argmax_overlaps = overlaps.argmax(axis=0)
-        gt_max_overlaps = overlaps[gt_argmax_overlaps,
-                                   np.arange(overlaps.shape[1])]
-        gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
+        pos_overlaps = overlaps[:,gt_boxes[:,4]>=0];
+        gt_argmax_overlaps = pos_overlaps.argmax(axis=0)
+        gt_max_overlaps = pos_overlaps[gt_argmax_overlaps,
+                                   np.arange(pos_overlaps.shape[1])]
+        gt_argmax_overlaps = np.where(pos_overlaps == gt_max_overlaps)[0]
 
         if not cfg.TRAIN.RPN_CLOBBER_POSITIVES:
             # assign bg labels first so that positive labels can clobber them
@@ -147,7 +148,7 @@ class AnchorTargetLayer(caffe.Layer):
         labels[gt_argmax_overlaps] = 1
 
         # fg label: above threshold IOU
-        labels[max_overlaps >= cfg.TRAIN.RPN_POSITIVE_OVERLAP] = 1
+        labels[np.logical_and(max_overlaps >= cfg.TRAIN.RPN_POSITIVE_OVERLAP, gt_boxes[argmax_overlaps,4]>=0)] = 1
 
         if cfg.TRAIN.RPN_CLOBBER_POSITIVES:
             # assign bg labels last so that negative labels can clobber positives
